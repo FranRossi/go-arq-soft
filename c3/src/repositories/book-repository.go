@@ -29,3 +29,15 @@ func (bookRepo *BookRepo) GetBook(title string) (models.Book, error) {
 	// junto con el error
 	return models.Book{}, fmt.Errorf("Book not found: %s", title)
 }
+
+func (bookRepo *BookRepo) GetBooksByAuthor(author string) ([]models.Book, error) {
+	booksByAuthor := make([]models.Book, 0)
+
+	for _, book := range bookRepo.bookList {
+		if book.Author == author {
+			booksByAuthor = append(booksByAuthor, book)
+		}
+	}
+
+	return booksByAuthor, nil
+}

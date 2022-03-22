@@ -5,9 +5,8 @@ import (
 	"c3/src/repositories"
 	"encoding/json"
 	"fmt"
-	"time"
-
 	"github.com/gofiber/fiber/v2"
+	"time"
 )
 
 type BookController struct {
@@ -18,6 +17,42 @@ type BookController struct {
 // En este caso lo usamos para iniciarlizar la variable privada
 func NewBookController(repo *repositories.BookRepo) *BookController {
 	return &BookController{repo: repo}
+}
+
+func (controller *BookController) AddBook(c *fiber.Ctx) error {
+	var book models.Book
+	// Tengo que pasar la direccion de memoria asi va a pone las variables
+	// Que vienen en el contexto declaradas segun el json del modelo
+	fmt.Println(string(c.Body()))
+
+	book.CreatedAt = time.Now()
+	err := json.Unmarshal(c.Body(), &book)
+	if err != nil {
+		// Return, if book has invalid fields
+		return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
+			"error": true,
+			"msg":   err.Error(),
+			"book":  nil,
+		})
+	}
+
+	// Add new book
+	err = controller.repo.AddBook(book)
+	if err != nil {
+		// Return, if book not found.
+		return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
+			"error": true,
+			"msg":   err.Error(),
+			"book":  nil,
+		})
+	}
+
+	// Return status 201 Created.
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+		"error": false,
+		"msg":   "Book created succesfully!",
+		"book":  book,
+	})
 }
 
 // Endpoint para traer los libros
@@ -65,38 +100,26 @@ func (controller *BookController) GetBook(c *fiber.Ctx) error {
 	})
 }
 
-func (controller *BookController) AddBook(c *fiber.Ctx) error {
-	var book models.Book
-	// Tengo que pasar la direccion de memoria asi va a pone las variables
-	// Que vienen en el contexto declaradas segun el json del modelo
-	fmt.Println(string(c.Body()))
+func (controller *BookController) GetBooksByAuthor(c *fiber.Ctx) error {
 
-	book.CreatedAt = time.Now()
-	err := json.Unmarshal(c.Body(), &book)
+	// Get all books by an Author.
+	books, err := controller.repo.GetBooksByAuthor(c.Params("author"))
+	fmt.Println(c.Params("author"))
 	if err != nil {
-		// Return, if book has invalid fields
-		return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
+		// Return, if books not found.
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"error": true,
 			"msg":   err.Error(),
-			"book":  nil,
+			"count": 0,
+			"books": nil,
 		})
 	}
 
-	// Add new book
-	err = controller.repo.AddBook(book)
-	if err != nil {
-		// Return, if book not found.
-		return c.Status(fiber.ErrBadRequest.Code).JSON(fiber.Map{
-			"error": true,
-			"msg":   err.Error(),
-			"book":  nil,
-		})
-	}
-
-	// Return status 201 Created.
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+	// Return status 200 OK.
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"error": false,
-		"msg":   "Book created succesfully!",
-		"book":  book,
+		"msg":   nil,
+		"count": len(books),
+		"books": books,
 	})
 }
